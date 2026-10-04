@@ -23,6 +23,15 @@ defmodule OrtexTest do
     assert result |> Nx.backend_transfer() |> Nx.argmax(axis: 1) == Nx.tensor([499])
   end
 
+  describe "available_providers" do
+    test "lists the CPU provider every ONNX Runtime build registers" do
+      providers = Ortex.Native.available_providers()
+
+      assert "CPUExecutionProvider" in providers
+      assert Enum.all?(providers, &String.ends_with?(&1, "ExecutionProvider"))
+    end
+  end
+
   describe "intra_threads" do
     test "a session capped at one intra-op thread still runs the model" do
       model = Ortex.load("./models/tinymodel.onnx", [:cpu], 3, intra_threads: 1)

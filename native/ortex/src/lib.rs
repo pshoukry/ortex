@@ -30,6 +30,14 @@ fn init(
     Ok(ResourceArc::new(model))
 }
 
+/// The execution providers the loaded ONNX Runtime was built with, as its own
+/// `GetAvailableProviders` lists them. A Cargo feature only asks `ort` to
+/// register a provider; this is what the linked library actually carries.
+#[rustler::nif]
+fn available_providers() -> NifResult<Vec<String>> {
+    utils::available_providers().map_err(|e| rustler::Error::Term(Box::new(e)))
+}
+
 #[rustler::nif]
 fn show_session(
     model: ResourceArc<model::OrtexModel>,
@@ -113,6 +121,7 @@ rustler::init!(
         from_binary,
         to_binary,
         show_session,
+        available_providers,
         slice,
         reshape,
         concatenate

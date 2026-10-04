@@ -125,3 +125,55 @@ pub fn is_bool_input(inp: &ort::ValueType) -> bool {
         ort::ValueType::Optional(boxed_input) => is_bool_input(boxed_input),
     }
 }
+
+/// Calls ONNX Runtime's `GetAvailableProviders` on the loaded library and
+/// returns its list, in the runtime's own order and spelling
+/// (`CPUExecutionProvider`, `CUDAExecutionProvider`, ...).
+///
+/// `ort`'s `ExecutionProvider::is_available` makes the same call, but answers
+/// for one provider at a time and only for providers `ort` knows by name.
+pub fn available_providers() -> Result<Vec<String>, String> {
+    let api = unsafe { ort::api().as_ref() };
+    let get = api
+        .GetAvailableProviders
+        .ok_or("GetAvailableProviders is null")?;
+    let release = api
+        .ReleaseAvailableProviders
+        .ok_or("ReleaseAvailableProviders is null")?;
+
+    let mut providers: *mut *mut std::os::raw::c_char = std::ptr::null_mut();
+    let mut count: std::os::raw::c_int = 0;
+    let status = unsafe { get(&mut providers, &mut count) };
+    if !status.is_null() {
+        return Err(status_message(api, status));
+    }
+    if providers.is_null() {
+        return Ok(Vec::new());
+    }
+
+    let names = (0..count as isize)
+        .map(|i| {
+            let name = unsafe { std::ffi::CStr::from_ptr(*providers.offset(i)) };
+            name.to_string_lossy().into_owned()
+        })
+        .collect();
+
+    let status = unsafe { release(providers, count) };
+    if !status.is_null() {
+        return Err(status_message(api, status));
+    }
+    Ok(names)
+}
+
+fn status_message(api: &ort::sys::OrtApi, status: *mut ort::sys::OrtStatus) -> String {
+    let message = match api.GetErrorMessage {
+        Some(get) => unsafe { std::ffi::CStr::from_ptr(get(status)) }
+            .to_string_lossy()
+            .into_owned(),
+        None => "ONNX Runtime returned an error status".to_string(),
+    };
+    if let Some(release) = api.ReleaseStatus {
+        unsafe { release(status) };
+    }
+    message
+}
