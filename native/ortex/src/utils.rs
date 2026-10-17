@@ -90,9 +90,21 @@ pub fn to_binary<'a>(
     Ok(reference.make_binary(env, |x| x.to_bytes()))
 }
 
-/// Takes a vec of Atoms and transforms them into a vec of ExecutionProvider Enums
+/// Whether `eps` asks for CoreML, which `model::init` registers itself, as an
+/// ML Program on the GPU (see `model::append_coreml`), when the `coreml`
+/// feature is on.
+pub fn wants_coreml(env: rustler::env::Env, eps: &[Atom]) -> bool {
+    cfg!(feature = "coreml")
+        && eps
+            .iter()
+            .any(|e| e.to_term(env).atom_to_string().unwrap() == COREML)
+}
+
+/// Takes a vec of Atoms and transforms them into a vec of ExecutionProvider Enums.
+/// With the `coreml` feature on, CoreML is left out: `model::init` registers it.
 pub fn map_eps(env: rustler::env::Env, eps: Vec<Atom>) -> Vec<ExecutionProviderDispatch> {
     eps.iter()
+        .filter(|e| !(cfg!(feature = "coreml") && e.to_term(env).atom_to_string().unwrap() == COREML))
         .map(|e| match &e.to_term(env).atom_to_string().unwrap()[..] {
             CPU => ort::CPUExecutionProvider::default().build(),
             CUDA => ort::CUDAExecutionProvider::default().build(),

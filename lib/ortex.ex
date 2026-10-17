@@ -25,6 +25,13 @@ defmodule Ortex do
       core, so one busy model can occupy most of the machine; a smaller pool
       trades per-inference latency for cores left free for other work, such
       as a second model. Must be a positive integer.
+    * `:coreml_cache_dir` - where CoreML keeps the model it compiles, so the
+      next session on the same model skips the compile. CoreML recompiles
+      only when the graph or the model's metadata changes, not its weights,
+      so give each model file's content its own directory.
+
+  With the `coreml` feature, `:coreml` registers CoreML as an ML Program on
+  the CPU and GPU, rather than through `ort`'s legacy NeuralNetwork flags.
 
   ## Examples
 

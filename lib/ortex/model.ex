@@ -23,9 +23,11 @@ defmodule Ortex.Model do
 
   @doc false
   def load(path, eps \\ [:cpu], opt \\ 3, options \\ []) do
-    intra_threads = options |> Keyword.validate!(intra_threads: nil) |> intra_threads!()
+    options = Keyword.validate!(options, intra_threads: nil, coreml_cache_dir: nil)
+    intra_threads = intra_threads!(intra_threads: options[:intra_threads])
+    cache_dir = cache_dir!(options[:coreml_cache_dir])
 
-    case Ortex.Native.init(path, eps, opt, intra_threads) do
+    case Ortex.Native.init(path, eps, opt, intra_threads, cache_dir) do
       {:error, msg} ->
         raise msg
 
@@ -42,6 +44,14 @@ defmodule Ortex.Model do
   defp intra_threads!(intra_threads: threads) do
     raise ArgumentError,
           "expected :intra_threads to be a positive integer, got: #{inspect(threads)}"
+  end
+
+  defp cache_dir!(nil), do: nil
+  defp cache_dir!(dir) when is_binary(dir) and dir != "", do: dir
+
+  defp cache_dir!(dir) do
+    raise ArgumentError,
+          "expected :coreml_cache_dir to be a non-empty path, got: #{inspect(dir)}"
   end
 
   @doc false

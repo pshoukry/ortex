@@ -23,9 +23,14 @@ fn init(
     eps: Vec<Atom>,
     opt: i32,
     intra_threads: Option<usize>,
+    coreml_cache_dir: Option<String>,
 ) -> NifResult<ResourceArc<model::OrtexModel>> {
+    let coreml = utils::wants_coreml(env, &eps);
     let eps = utils::map_eps(env, eps);
-    let model = model::init(model_path, eps, opt, intra_threads)
+    let coreml = coreml.then(|| model::CoreMl {
+        cache_dir: coreml_cache_dir,
+    });
+    let model = model::init(model_path, eps, coreml, opt, intra_threads)
         .map_err(|e| rustler::Error::Term(Box::new(e.to_string())))?;
     Ok(ResourceArc::new(model))
 }
